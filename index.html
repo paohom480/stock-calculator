@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Stock Position Calculator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .results { grid-template-columns: repeat(9, 1fr); }
+    @media (max-width: 920px) { .results { grid-template-columns: repeat(3, 1fr); } .results > div:nth-child(3n) { border-right: 0; } }
+    @media (max-width: 560px) { .results { grid-template-columns: repeat(2, 1fr); } .results > div:nth-last-child(-n+1) { border-bottom: 0; } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="hero">
+      <div><p class="eyebrow">RISK-BASED TRADE PLANNER</p><h1>Stock Position<br><em>Calculator</em></h1></div>
+      <p class="hero-copy">คำนวณขนาดสถานะและความเสี่ยงของพอร์ต<br>เพื่อวางแผนการเทรดอย่างเป็นระบบ</p>
+    </header>
+
+    <section class="portfolio-inputs panel" aria-labelledby="portfolio-title">
+      <div class="section-title"><div><p class="eyebrow">PORTFOLIO SETTINGS</p><h2 id="portfolio-title">ข้อมูลพอร์ต</h2></div><span class="live-dot">คำนวณแบบ Real-time</span></div>
+      <div class="settings-grid">
+        <label>เงินทุนทั้งหมด (บาท)<input id="capital" type="number" min="0" step="100" value="50000" inputmode="decimal"></label>
+        <label>Portfolio Risk Limit (%)<input id="riskLimitPercent" type="number" min="0" max="100" step="0.1" value="5" inputmode="decimal"></label>
+        <div class="limit-card"><span>Maximum Portfolio Risk</span><strong id="riskLimitMoney">฿2,500.00</strong></div>
+        <label>Minimum R <div class="min-r-control"><span>1 :</span><input id="minimumR" type="number" min="0.1" step="0.1" value="2" inputmode="decimal"></div></label>
+      </div>
+    </section>
+
+    <section class="dashboard" aria-label="สรุปพอร์ต">
+      <article class="metric capital"><span>เงินทุน</span><strong id="dCapital">฿50,000.00</strong></article>
+      <article class="metric"><span>Risk สูงสุด</span><strong id="dRiskLimit">฿2,500.00</strong><small id="dRiskLimitPercent">5.00% ของเงินทุน</small></article>
+      <article class="metric"><span>Risk ที่ใช้ไป</span><strong id="dRiskUsed">฿0.00</strong><small id="dRiskUsedPercent">0.00% ของเงินทุน</small></article>
+      <article class="metric"><span>Risk คงเหลือ</span><strong id="dRiskRemain">฿2,500.00</strong><small>ก่อนถึงขีดจำกัด</small></article>
+      <article class="metric"><span>เงินลงทุน</span><strong id="dInvestment">฿0.00</strong><small id="dInvestmentPercent">0.00% ของเงินทุน</small></article>
+      <article class="metric reward"><span>กำไรเป้าหมาย</span><strong id="dTargetProfit">฿0.00</strong><small id="dTargetProfitPercent">0.00% ของเงินทุน</small></article>
+      <article class="metric ratio"><span>Aggregate R:R</span><strong id="dAggregateR">—</strong><small>Risk : Reward</small></article>
+      <article class="metric status"><span>สถานะพอร์ต</span><strong id="dStatus">ภายใน Risk Limit</strong><small id="dStatusDetail">พร้อมวางแผนรายการเทรด</small></article>
+    </section>
+
+    <section class="trades panel" aria-labelledby="trades-title">
+      <div class="section-title"><div><p class="eyebrow">TRADE POSITIONS</p><h2 id="trades-title">รายการเทรด</h2></div><button class="add-button" id="addTrade" type="button"><span>+</span> เพิ่มรายการ</button></div>
+      <p class="hint">กำหนดความเสี่ยงที่จัดสรรเป็นบาทหรือเปอร์เซ็นต์ของเงินทุน จำนวนหุ้นจะปัดลงเสมอ</p>
+      <div id="tradeList" class="trade-list"></div>
+    </section>
+
+    <section class="portfolio-summary panel" aria-labelledby="summary-title">
+      <div class="section-title"><div><p class="eyebrow">PORTFOLIO OVERVIEW</p><h2 id="summary-title">สรุปความเสี่ยงและผลตอบแทน</h2></div></div>
+      <div class="summary-grid">
+        <div><span>Total Portfolio Risk</span><strong id="sRisk">฿0.00</strong><small id="sRiskPercent">0.00% ของเงินทุน</small></div>
+        <div><span>Portfolio Risk Limit</span><strong id="sLimit">฿2,500.00</strong><small id="sRemaining">เหลือ ฿2,500.00</small></div>
+        <div><span>Total Target Profit</span><strong class="positive" id="sProfit">฿0.00</strong><small id="sProfitPercent">0.00% ของเงินทุน</small></div>
+        <div><span>Aggregate Risk/Reward</span><strong id="sAggregateR">—</strong><small>รวมทุกสถานะ</small></div>
+      </div>
+      <div id="warning" class="warning" hidden><span>!</span><div><strong>ความเสี่ยงรวมเกิน Portfolio Risk Limit</strong><p id="warningText"></p></div></div>
+    </section>
+  </main>
+  <template id="tradeTemplate">
+    <article class="trade-card">
+      <div class="trade-card-head"><div class="trade-number"></div><button class="delete-button" type="button" aria-label="ลบรายการ">ลบรายการ</button></div>
+      <div class="trade-inputs">
+        <label>ชื่อหุ้น / Ticker<input class="ticker" type="text" maxlength="20" placeholder="เช่น AOT"></label>
+        <label>ราคาเข้า<input class="entry" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></label>
+        <label>Stop Loss<input class="stop" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></label>
+        <label>Take Profit<input class="target" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00"></label>
+        <label>Risk ที่จัดสรร<div class="allocation"><input class="allocated-risk" type="number" min="0" step="0.01" inputmode="decimal"><select class="risk-type" aria-label="หน่วยความเสี่ยง"><option value="baht">บาท</option><option value="percent">%</option></select></div></label>
+      </div>
+      <p class="validation" aria-live="polite"></p>
+      <div class="results">
+        <div><span>Risk / Share</span><strong class="risk-share">—</strong></div>
+        <div><span>Risk %</span><strong class="risk-percent">—</strong></div>
+        <div><span>จำนวนหุ้น</span><strong class="shares">—</strong></div>
+        <div><span>Maximum Loss</span><strong class="maximum-loss">—</strong></div>
+        <div><span>เงินลงทุน</span><strong class="investment">—</strong></div>
+        <div><span>Reward / Share</span><strong class="reward-share">—</strong></div>
+        <div><span>Reward %</span><strong class="reward-percent">—</strong></div>
+        <div><span>Target Profit</span><strong class="target-profit">—</strong></div>
+        <div class="r-result"><span>Risk / Reward</span><strong class="r-ratio">—</strong><small class="r-status"></small></div>
+      </div>
+    </article>
+  </template>
+  <script src="app.js"></script>
+</body>
+</html>
